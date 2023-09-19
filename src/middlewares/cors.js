@@ -1,16 +1,11 @@
-const allowedCors = [
-  'http://mesto.nevarus.nomoredomainsicu.ru',
-  'https://mesto.nevarus.nomoredomainsicu.ru',
-  'http://localhost:3000',
-];
-const DEFAULT_ALLOWED_METHODS = 'GET,HEAD,PUT,PATCH,POST,DELETE';
+const { DEFAULT_ALLOWED_METHODS, ALLOWED_CORS } = require('../constants');
 
 const cors = (req, res, next) => {
   const { method } = req;
   const { origin } = req.headers; // Сохраняем источник запроса в переменную origin
   const requestHeaders = req.headers['access-control-request-headers'];
 
-  if (allowedCors.includes(origin)) {
+  if (ALLOWED_CORS.includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin);
   }
 
