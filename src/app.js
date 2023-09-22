@@ -9,12 +9,13 @@ const cors = require('./middlewares/cors');
 const { requestLogger, errorLogger } = require('./middlewares/logger');
 const limiter = require('./middlewares/limiter');
 const { routes } = require('./routes/index');
+const { MONGO_URL } = require('./constants');
 
 require('dotenv').config();
 
-const { PORT = 3000, DATA_BASE = 'mongodb://localhost:27017/bitfilmsdb' } = process.env;
+const { PORT = 3000, DATA_BASE, NODE_ENV } = process.env;
 
-mongoose.connect(DATA_BASE, {
+mongoose.connect(NODE_ENV === 'production' ? DATA_BASE : MONGO_URL, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
   family: 4,

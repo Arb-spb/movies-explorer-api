@@ -6,21 +6,32 @@ const BadRequestErr = require('../errors/bad-request-err');
 const NotFoundError = require('../errors/not-found-err');
 const ConflictErr = require('../errors/conflict-err');
 const UnauthorizedErr = require('../errors/unauthorized-err');
+const {
+  USER_ID_NOT_FOUND_TEXT,
+  USER_NOT_FOUND_TEXT,
+  BAD_REQUEST,
+  CAST_ERROR,
+  VALIDATION_ERROR,
+  BAD_EMAIL_OR_PASSWORD,
+  DEV_SECRET_KEY,
+} = require('../constants');
 
 module.exports.getUser = (req, res, next) => {
   User.findById(req.user._id)
     .then((user) => {
       if (!user) {
-        throw new NotFoundError('Пользователь не найден');
+        throw new NotFoundError(USER_NOT_FOUND_TEXT);
       }
 
-      return res.send({ data: user });
+      return res
+        .status(http2.constants.HTTP_STATUS_OK)
+        .send({ data: user });
     })
     .catch((err) => {
       let error = err;
 
-      if (err.name === 'CastError') {
-        error = new BadRequestErr('Переданы некорректные данные');
+      if (err.name === CAST_ERROR) {
+        error = new BadRequestErr(BAD_REQUEST);
       }
 
       next(error);
@@ -38,12 +49,17 @@ module.exports.updateUser = (req, res, next) => {
       runValidators: true,
     },
   )
-    .then((user) => res.send({ data: user }))
+    .then((user) => {
+      if (!user) {
+        throw new NotFoundError(USER_ID_NOT_FOUND_TEXT);
+      }
+      return res.status(http2.constants.HTTP_STATUS_OK).send({ data: user });
+    })
     .catch((err) => {
       let error = err;
 
-      if (err.name === 'ValidationError') {
-        error = new BadRequestErr('Переданы некорректные данные');
+      if (err.name === VALIDATION_ERROR) {
+        error = new BadRequestErr(BAD_REQUEST);
       }
 
       next(error);
@@ -75,10 +91,10 @@ module.exports.createUser = (req, res, next) => {
       let error = err;
 
       if (err.code === 11000) {
-        error = new ConflictErr('Переданы некорректные данные');
+        error = new ConflictErr(BAD_REQUEST);
       }
-      if (err.name === 'ValidationError') {
-        error = new BadRequestErr('Переданы некорректные данные');
+      if (err.name === VALIDATION_ERROR) {
+        error = new BadRequestErr(BAD_REQUEST);
       }
 
       next(error);
@@ -91,7 +107,7 @@ module.exports.signin = (req, res, next) => {
   User.findOne({ email }).select('+password')
     .then(async (user) => {
       if (!user) {
-        throw new UnauthorizedErr('Неправильные почта или пароль');
+        throw new UnauthorizedErr(BAD_EMAIL_OR_PASSWORD);
       }
 
       return {
@@ -101,11 +117,11 @@ module.exports.signin = (req, res, next) => {
     })
     .then(({ matched, _id }) => {
       if (!matched) {
-        throw new UnauthorizedErr('Неправильные почта или пароль');
+        throw new UnauthorizedErr(BAD_EMAIL_OR_PASSWORD);
       }
 
       const { NODE_ENV, JWT_SECRET } = process.env;
-      const jwtSecret = NODE_ENV === 'production' ? JWT_SECRET : 'some-secret-key';
+      const jwtSecret = NODE_ENV === 'production' ? JWT_SECRET : DEV_SECRET_KEY;
       const token = jwt.sign({ _id }, jwtSecret, { expiresIn: '7d' });
 
       return res
@@ -113,13 +129,19 @@ module.exports.signin = (req, res, next) => {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
         })
-        .status(200)
+        .status(http2.constants.HTTP_STATUS_OK)
         .json({ message: 'Logged in successfully 😊 👌' });
     })
     .catch(next);
 };
 
-module.exports.signout = (req, res) => res
-  .clearCookie('access_token')
-  .status(200)
-  .json({ message: 'Successfully logged out 😏 🍀' });
+module.exports.signout = (req, res, next) => {
+  try {
+    res
+      .clearCookie('access_token')
+      .status(http2.constants.HTTP_STATUS_OK)
+      .json({ message: 'Successfully logged out 😏 🍀' });
+  } catch (err) {
+    next(err);
+  }
+};

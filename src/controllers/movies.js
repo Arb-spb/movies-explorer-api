@@ -3,10 +3,18 @@ const NotFoundError = require('../errors/not-found-err');
 const ForbiddenErr = require('../errors/forbidden-err');
 const BadRequestErr = require('../errors/bad-request-err');
 const Movies = require('../models/movies');
+const {
+  FORBIDDEN_ERROR_TEXT,
+  MOVIE_ID_NOT_FOUND_ERROR_TEXT,
+  BAD_REQUEST,
+  VALIDATION_ERROR,
+} = require('../constants');
 
 module.exports.getMovies = (req, res, next) => {
   Movies.find({ owner: req.user._id })
-    .then((movies) => res.send({ data: movies }))
+    .then((movies) => res
+      .status(http2.constants.HTTP_STATUS_OK)
+      .send({ data: movies }))
     .catch(next);
 };
 
@@ -46,8 +54,8 @@ module.exports.createMovies = (req, res, next) => {
     .catch((err) => {
       let error = err;
 
-      if (err.name === 'ValidationError') {
-        error = new BadRequestErr('Переданы некорректные данные');
+      if (err.name === VALIDATION_ERROR) {
+        error = new BadRequestErr(BAD_REQUEST);
       }
 
       next(error);
@@ -55,27 +63,18 @@ module.exports.createMovies = (req, res, next) => {
 };
 
 module.exports.deleteMovies = (req, res, next) => {
-  Movies.findById(req.params.id)
+  Movies.findById(req.params.movieId)
     .then((movie) => {
       if (!movie) {
-        throw new NotFoundError('Нет карточки с таким id');
-      }
-      if (movie.owner.toString() !== req.user._id) {
-        throw new ForbiddenErr('Переданы не корректные данные');
-      }
-      return movie;
-    })
-    .then(async (movie) => {
-      Movies.deleteOne({ _id: movie._id })
-        .then(() => res.send({ data: movie }));
-    })
-    .catch((err) => {
-      let error = err;
-
-      if (err.name === 'CastError') {
-        error = new BadRequestErr('Переданы некорректные данные');
+        throw new NotFoundError(MOVIE_ID_NOT_FOUND_ERROR_TEXT);
+      } else if (movie.owner.toString() !== req.user._id) {
+        throw new ForbiddenErr(FORBIDDEN_ERROR_TEXT);
       }
 
-      next(error);
-    });
+      return Movies.findByIdAndDelete(req.params.movieId)
+        .then((deletedMovie) => res
+          .status(http2.constants.HTTP_STATUS_OK)
+          .send(deletedMovie));
+    })
+    .catch(next);
 };
