@@ -130,7 +130,7 @@ module.exports.signin = (req, res, next) => {
           secure: process.env.NODE_ENV === 'production',
         })
         .status(http2.constants.HTTP_STATUS_OK)
-        .json({ message: 'Logged in successfully 😊 👌' });
+        .json({ token });
     })
     .catch(next);
 };

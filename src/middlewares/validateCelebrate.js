@@ -18,7 +18,7 @@ const signinValidate = celebrate({
 
 const createMoviesValidate = celebrate({
   body: {
-    country: Joi.string().required().min(2).max(30),
+    country: Joi.string().required().min(2).max(100),
     director: Joi.string().required().min(2).max(100),
     duration: Joi.number().required(),
     year: Joi.string().required().min(2).max(30),
